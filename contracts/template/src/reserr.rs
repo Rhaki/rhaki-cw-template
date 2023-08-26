@@ -1,5 +1,7 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Response};
 use thiserror::Error;
+
+pub type ContractResponse = Result<Response, ContractError>;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -8,6 +10,4 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }
