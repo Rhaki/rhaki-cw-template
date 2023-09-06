@@ -3,7 +3,7 @@ use cw2::set_contract_version;
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    reserr::ContractResponse,
+    response::ContractResponse,
 };
 
 const CONTRACT_NAME: &str = "crates.io:{{project-name}}";
