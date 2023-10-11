@@ -10,7 +10,7 @@ cargo generate --git https://github.com/Rhaki/rhaki-cw-template.git --name proje
 
 The repo will be created with `workspace` defined on the primary `Cargo.toml`
 
-### To add a contract into the `workspace` run:
+### Add a contract into the project:
 ```
 cargo make add-contract
 ```
