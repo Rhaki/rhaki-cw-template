@@ -16,7 +16,7 @@ cargo make add-contract
 ```
 
 This command launches a python script that:
-- Create a new folder structure for the contract at the path `/contracts/`;
+- Create a new folder structure for the contract at the path `./contracts/`;
 - Adds the new contract to members in the `workspace`;
 - Create a new file inside `./package/src/`
 - Insert the export of the new file created in `./package/src/lib.rs`
