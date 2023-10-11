@@ -1,6 +1,5 @@
 [package]
-# name             = "{{crate_name}}-pkg"
-name             = "asd-pkg"
+name             = "{{crate_name}}-pkg"
 
 version          = { workspace = true }
 authors          = { workspace = true }
