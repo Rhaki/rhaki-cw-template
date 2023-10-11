@@ -2,21 +2,21 @@
 [config]
 default_to_workspace = false
 
-[tasks.add]
-script = '''
-python3 "$(pwd)"/template/add_template.py
-'''
+
 
 [env]
 # Directory with wasm files used by integration tests (another directory can be used instead, for example 'artifacts' from rust-optimizer)
 ARTIFACTS_DIR_PATH = "target/wasm32-unknown-unknown/release"
 # If you bump this version, verify RUST_VERSION correctness
-RUST_OPTIMIZER_VERSION = "0.13.0"
+RUST_OPTIMIZER_VERSION = "0.14.0"
 # Use rust version from rust-optimizer Dockerfile (see https://github.com/CosmWasm/rust-optimizer/blob/main/Dockerfile#L1)
 # to be sure that we compile / test against the same version
 RUST_VERSION = "1.69.0"
 
-
+[tasks.add-contract]
+script = '''
+python3 "$(pwd)"/template/add_template.py
+'''
 
 [tasks.install-stable]
 script = '''
@@ -52,22 +52,10 @@ docker run --rm -v "$(pwd)":/code \
   ${image}
 """
 
-
-
 [tasks.test]
 toolchain = "${RUST_VERSION}"
 command = "cargo"
 args = ["test", "--locked"]
-
-[tasks.unit-test]
-toolchain = "${RUST_VERSION}"
-command = "cargo"
-args = ["test", "--locked", "--workspace", "--exclude", "mars-integration-tests", "--exclude", "mars-swapper-astroport", "--exclude", "mars-oracle-wasm", "--exclude", "mars-swapper-osmosis"]
-
-[tasks.integration-test]
-toolchain = "${RUST_VERSION}"
-command = "cargo"
-args = ["test", "--locked", "-p", "mars-integration-tests", "-p", "mars-swapper-astroport", "-p", "mars-oracle-wasm", "-p", "mars-swapper-osmosis", "--test", "*"]
 
 [tasks.fmt]
 toolchain = "nightly"
