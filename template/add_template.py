@@ -85,11 +85,3 @@ with open(f"{new_path}/src/lib.rs", "w") as file:
     file.writelines(lines)
 
 #endregion
-
-
-
-
-
-
-
-
