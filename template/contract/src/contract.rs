@@ -1,6 +1,6 @@
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, StdResult};
 
-use $pkg$::$contract$::msgs::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use $pkg$::$contract$::msgs::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 use crate::response::ContractResponse;
 
@@ -28,3 +28,9 @@ pub fn execute(
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
 }
+
+#[entry_point]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResponse {
+    unimplemented!()
+}
+
