@@ -3,7 +3,6 @@
 default_to_workspace = false
 
 
-
 [env]
 # Directory with wasm files used by integration tests (another directory can be used instead, for example 'artifacts' from rust-optimizer)
 ARTIFACTS_DIR_PATH = "target/wasm32-unknown-unknown/release"
@@ -13,10 +12,6 @@ RUST_OPTIMIZER_VERSION = "0.14.0"
 # to be sure that we compile / test against the same version
 RUST_VERSION = "1.69.0"
 
-[tasks.add-contract]
-script = '''
-python3 "$(pwd)"/template/add_template.py
-'''
 
 [tasks.install-stable]
 script = '''
@@ -90,3 +85,263 @@ dependencies = [
   "generate-all-schemas",
   "rust-optimizer",
 ]
+[tasks.add-contract]
+args = ["${@}"]
+script_runner = "@rust"
+script = '''
+use core::panic;
+use std::io::Write;
+
+const MOD_FILE: &str = "pub mod msgs{
+    use cosmwasm_schema::{cw_serde, QueryResponses};
+
+    #[cw_serde]
+    pub struct InstantiateMsg{}
+
+    #[cw_serde]
+    pub enum ExecuteMsg {}
+
+    #[cw_serde]
+    #[derive(QueryResponses)]
+    pub enum QueryMsg {}
+
+    #[cw_serde]
+    pub struct MigrateMsg{}
+}
+
+pub mod definitions{}";
+
+const CARGO_TOML: &str = "[package]
+name             = \"$contract$\"
+version          = { workspace = true }
+authors          = { workspace = true }
+edition          = { workspace = true }
+exclude          = [\"contract.wasm\", \"hash.txt\"]
+
+[lib]
+crate-type       = [\"cdylib\", \"rlib\"]
+
+[profile.release]
+opt-level        = 3
+debug            = false
+rpath            = false
+lto              = true
+debug-assertions = false
+codegen-units    = 1
+panic            = 'abort'
+incremental      = false
+overflow-checks  = true
+
+[features]
+backtraces       = [\"cosmwasm-std/backtraces\"]
+library          = []
+
+[dependencies]
+cosmwasm-schema  = { workspace = true }
+cosmwasm-std     = { workspace = true }
+cw-storage-plus  = { workspace = true }
+schemars         = { workspace = true }
+serde            = { workspace = true }
+thiserror        = { workspace = true }
+rhaki-cw-plus    = { workspace = true }
+";
+
+const LIB_RS: &str = "#[cfg(not(feature = \"library\"))]
+pub mod contract;
+mod state;
+mod response;";
+
+const RESPONSE_RS: &str = "use cosmwasm_std::{StdError, Response};
+use thiserror::Error;
+
+pub type ContractResponse = Result<Response, ContractError>;
+
+#[derive(Error, Debug)]
+pub enum ContractError {
+    #[error(\"{0}\")]
+    Std(#[from] StdError),
+
+    #[error(\"Unauthorized\")]
+    Unauthorized {},
+}";
+
+const CONTRACT_RS: &str =
+    "use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, StdResult};
+use $pkg$::$contract$::msgs::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use crate::response::ContractResponse;
+
+#[entry_point]
+pub fn instantiate(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: InstantiateMsg,
+) -> ContractResponse {
+    unimplemented!()
+}
+
+#[entry_point]
+pub fn execute(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: ExecuteMsg,
+) -> ContractResponse {
+    unimplemented!()
+}
+
+#[entry_point]
+pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
+    unimplemented!()
+}
+
+#[entry_point]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> ContractResponse {
+    unimplemented!()
+}";
+
+fn main() {
+    let args = std::env::args().collect::<Vec<String>>();
+
+    let len = args.len() - 1;
+
+    if len == 0 {
+        panic!("Contract name args not provided")
+    } else if len != 1 {
+        panic!("Expected 1 args, found {}", len)
+    }
+
+    // Get pkg name
+    let (pkg_name, pkg_name_replaced) = get_pkg_name();
+
+    let contract_name = args.last().unwrap().clone();
+    let contract_name_replaced = contract_name.replace("-", "_");
+
+    // If folder contracts does not exist, create it
+    if std::fs::metadata("./contracts").is_err() {
+        std::fs::create_dir_all("./contracts").unwrap();
+        let content = std::fs::read_to_string("./Cargo.toml").unwrap();
+        if content.find("[workspace]").is_some() {
+            if let Some(members_pos) = content.find("members") {
+                let members_end_pos = content[members_pos..].find(']').unwrap() + members_pos;
+                let new_content = format!("{}, \"contracts/*\"]", &content[..members_end_pos]);
+                let new_content = format!("{}{}", new_content, &content[members_end_pos + 1..]);
+                let mut file = std::fs::File::create("./Cargo.toml").unwrap();
+                file.write_all(new_content.as_bytes()).unwrap();
+            } else {
+                panic!("Keyword [members] not found in Cargo.toml");
+            }
+        } else {
+            panic!("Keyword [workspace] not found in Cargo.toml");
+        }
+    };
+
+    // panic!("Not implemented yet"    );
+
+    // Update package lib.rs
+    let lib = std::fs::read_to_string("./package/src/lib.rs").unwrap();
+    let lib = format!("{}\npub mod {};", lib, contract_name_replaced);
+    let mut file = std::fs::File::create("./package/src/lib.rs").unwrap();
+    file.write_all(lib.as_bytes()).unwrap();
+
+    // Create new mod
+    let mut file =
+        std::fs::File::create(format!("./package/src/{}.rs", contract_name_replaced)).unwrap();
+    file.write_all(MOD_FILE.as_bytes()).unwrap();
+
+    // CONTRACT DEFINITIONS
+
+    // Create folder
+    let path_contract = format!("./contracts/{}", contract_name);
+    std::fs::create_dir_all(&path_contract).unwrap();
+
+    // Create src folder
+    std::fs::create_dir_all(format!("{}/src", path_contract)).unwrap();
+
+    // --- Cargo.toml ---
+
+    let content = CARGO_TOML.replace("$contract$", &contract_name);
+    let mut content = to_rows(content);
+    content.push(format!("{} = {{ workspace = true}}", pkg_name));
+    adapt_equal_sign(&mut content);
+    let content = content.join("\n");
+
+    let mut file = std::fs::File::create(format!("{path_contract}/Cargo.toml")).unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+
+    // --- src/lib.rs ---
+    let mut file = std::fs::File::create(format!("{path_contract}/src/lib.rs")).unwrap();
+    file.write_all(LIB_RS.as_bytes()).unwrap();
+
+    // --- src/response.rs ---
+    let mut file = std::fs::File::create(format!("{path_contract}/src/response.rs")).unwrap();
+    file.write_all(RESPONSE_RS.as_bytes()).unwrap();
+
+    // --- src/state.rs ---
+    let mut file = std::fs::File::create(format!("{path_contract}/src/state.rs")).unwrap();
+    file.write_all("".as_bytes()).unwrap();
+
+    // --- src/contract.rs ---
+    let content = CONTRACT_RS.replace("$contract$", &contract_name_replaced);
+    let content = content.replace("$pkg$", &pkg_name_replaced);
+
+    let mut file = std::fs::File::create(format!("{path_contract}/src/contract.rs")).unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+
+    // Update Cargo.toml
+    let content = std::fs::read_to_string("./Cargo.toml").unwrap();
+    let mut content = to_rows(content);
+    content.push(format!(
+        "{} = {{ path = \"./contracts/{}\" }}",
+        contract_name, contract_name
+    ));
+    adapt_equal_sign(&mut content);
+    let content = content.join("\n");
+
+    let mut file = std::fs::File::create("./Cargo.toml").unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+
+}
+
+fn get_pkg_name() -> (String, String) {
+    let content = std::fs::read_to_string("./package/Cargo.toml").unwrap();
+    let pkg_name = content
+        .split('\n')
+        .find(|line| line.starts_with("name"))
+        .unwrap();
+    let pkg_name = pkg_name.split('=').last().unwrap().trim();
+    let pkg_name = pkg_name.trim_matches('"');
+    (pkg_name.to_string(), pkg_name.to_string().replace("-", "_"))
+}
+
+fn to_rows(content: String) -> Vec<String> {
+    content.split('\n').map(|val| val.to_string()).collect()
+}
+
+fn adapt_equal_sign(content: &mut Vec<String>) {
+    let max_dist = content.iter().fold(0, |val, c| {
+        let equal_sign_pos = c.find("=").unwrap_or_default();
+        if equal_sign_pos > val {
+            equal_sign_pos
+        } else {
+            val
+        }
+    });
+
+    for i in content.iter_mut() {
+        let equal_sign_pos = i.find("=").unwrap_or_default();
+
+        if equal_sign_pos > 0 {
+            let diff = max_dist - equal_sign_pos;
+            let spaces = " ".repeat(diff);
+            let new_line = format!(
+                "{}{}{}",
+                i[..equal_sign_pos].to_string(),
+                spaces,
+                i[equal_sign_pos..].to_string()
+            );
+            *i = new_line;
+        }
+    }
+}
+'''
