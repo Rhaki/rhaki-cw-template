@@ -1,6 +1,6 @@
 ## CosmWasm contracts template workspace enable
 
-Advanced tool to generate CosmWasm template for advanced project
+Tool to generate CosmWasm smart contract workspace enable template project
 
 ### Create new repo:
 
@@ -12,11 +12,11 @@ The repo will be created with `workspace` defined on the primary `Cargo.toml`
 
 ### Add a contract into the project:
 ```
-cargo make add-contract
+cargo make add-contract contract_name
 ```
 
 This command launches a python script that:
-- Create a new folder structure for the contract at the path `./contracts/`;
+- Create a new folder structure and files for the contract at `./contracts/`;
 - Adds the new contract to members in the `workspace`;
-- Create a new file inside `./package/src/`
+- Create a new `mod` file inside `./package/src/`
 - Insert the export of the new file created in `./package/src/lib.rs`
