@@ -1,6 +1,6 @@
 [workspace]
 # let members inline
-members          = ["package"]
+members          = ["package", "deploy"]
 
 [workspace.package]
 version          = "0.1.0"
@@ -15,7 +15,6 @@ cw-storage-plus  = "1.2.0"
 schemars         = "0.8.16"
 serde            = { version = "1.0.194", default-features = false, features = ["derive"] }
 thiserror        = "1.0.56"
-rhaki-cw-plus    = "0.7.0"
-{{crate_name}}-pkg = { path = "./package", version = "0.1.0"}
-
-cw-multi-test    = "0.20.0"
+rhaki-cw-plus    = "2.0.7"
+{{crate_name}}-pkg = { path = "./package", version = "0.1.0" }
+{{crate_name}}-deploy = { path = "./package" }

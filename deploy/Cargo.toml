@@ -1,0 +1,9 @@
+[package]
+name                 = "{{crate_name}}-deploy"
+version              = { workspace = true }
+edition              = { workspace = true }
+
+[dependencies]
+rhaki-cw-plus        = { workspace = true, features = ["deploy"] }
+serde                = { workspace = true }
+{{crate_name}}-pkg   = { workspace = true }

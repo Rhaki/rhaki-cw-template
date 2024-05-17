@@ -1,0 +1,7 @@
+[package]
+name                           = "{{crate_name}}-test"
+version                        = { workspace = true }
+edition                        = { workspace = true }
+
+[dependencies]
+rhaki-cw-plus                  = { workspace = true, features = ["multi-test", "osmosis"]}
